@@ -44,7 +44,7 @@ void setup(){
   arduboy.initRandomSeed();
   vram = arduboy.getBuffer();
   initGame();
-  arduboy.setFrameRate(key_rate);
+  arduboy.setFrameRate(frame_rate);
 }
 void initGame(){
   resetGame();
@@ -147,7 +147,7 @@ void loopGame(){
     }
   }
   
-  for(int p=0;p<2;p++){
+  for(int p=0;p<1;p++){
     //draw head
     iy = (y[p][0]*2+dy[p][0]*1) / 8;
     by = (y[p][0]*2+dy[p][0]*1) % 8;
@@ -167,7 +167,7 @@ void loopGame(){
 */
 //  for(int p=0;p<2;p++){
   }
-  for(int p=0;p<1;p++){
+  for(int p=0;p<2;p++){
   //move head
     x[p][0] += dx[p][0];
     y[p][0] += dy[p][0];
