@@ -9,7 +9,7 @@ unsigned char *vram; // =arduboy.getBuffer()
   D       = dir    to walk: 0=x 1=y
   XXXXXXX = number to walk: -31 to +31
 */
-#define HISTMAX 500 // oh my memory
+#define HISTMAX 100 // oh my memory
 // 0=player 1=COM h=head t=tail
 uint8_t hist[2][HISTMAX];
 int  x[2][2],  y[2][2];// {x,y}[p][c] =            current position of player p+1 of {head,tail}[c]
@@ -25,19 +25,13 @@ int16_t getLeft(uint8_t *hist, int *i);
 void gameover(int iswin);
 
 void setup(){
-  initGame();
-  vram = arduboy.getBuffer();
-  initDraw();
-}
-void initDraw(){
   arduboy.begin();
-  arduboy.clear();
-  arduboy.drawRect(0, 0, WIDTH-1, HEIGHT-1, 1);
-  arduboy.display();
+  arduboy.initRandomSeed();
+  vram = arduboy.getBuffer();
+  initGame();
   arduboy.setFrameRate(4);
 }
 void initGame(){
-  arduboy.initRandomSeed();
   resetGame();
 }
 void resetGame(){
@@ -49,10 +43,10 @@ void resetGame(){
   x[0][1]=WX/4*1; y[0][1]=WY/2; //P2 head
   x[1][1]=WX/4*3; y[1][1]=WY/2; //P2 tail
   
-  dx[1][0]=+1; dy[1][0]=0; //P1 head
-  dx[0][0]=-1; dy[0][0]=0; //P1 tail
-  dx[1][1]=+1; dy[1][1]=0; //P2 head
-  dx[0][1]=-1; dy[0][1]=0; //P2 tail
+  dx[0][0]=+1; dy[0][0]=0; //P1 tail
+  dx[1][0]=-1; dy[1][0]=0; //P1 head
+  dx[0][1]=+1; dy[0][1]=0; //P2 tail
+  dx[1][1]=-1; dy[1][1]=0; //P2 head
   
   for(int i=0;i<HISTMAX;i++){
     hist[0][i]=0x00;
@@ -65,6 +59,10 @@ void resetGame(){
   ih[0][1]=0;
   ih[1][0]=0;
   ih[1][1]=0;
+  
+  arduboy.clear();
+  arduboy.drawRect(0, 0, WIDTH-2, HEIGHT-2, 1);
+  arduboy.display();
 }
 
 int ri=0;
@@ -80,14 +78,46 @@ void loop(){
        arduboy.pressed(  DOWN_BUTTON))){
     incHist(hist[0],&ih[0][0]);
   }else{
-    if(arduboy.pressed( LEFT_BUTTON)) if(dx[0][0]<0){incHist(hist[0],&ih[0][0]);}else{addHist(hist[0],&ih[0][0],-1,0);dx[0][0]=-1;dy[0][0]= 0;}
-    if(arduboy.pressed(RIGHT_BUTTON)) if(dx[0][0]>0){incHist(hist[0],&ih[0][0]);}else{addHist(hist[0],&ih[0][0],+1,0);dx[0][0]=+1;dy[0][0]= 0;}
-    if(arduboy.pressed(   UP_BUTTON)) if(dy[0][0]<0){incHist(hist[0],&ih[0][0]);}else{addHist(hist[0],&ih[0][0],-1,1);dx[0][0]= 0;dy[0][0]=-1;}
-    if(arduboy.pressed( DOWN_BUTTON)) if(dy[0][0]>0){incHist(hist[0],&ih[0][0]);}else{addHist(hist[0],&ih[0][0],+1,1);dx[0][0]= 0;dy[0][0]=+1;}
+    if(arduboy.pressed( LEFT_BUTTON)){
+      if(dx[0][0]<0){
+        incHist(hist[0],&ih[0][0]);
+      }else if(dx[0][0]==0){
+        addHist(hist[0],&ih[0][0],-1,0);
+        dx[0][0]=-1;
+        dy[0][0]= 0;
+      }
+    }
+    if(arduboy.pressed(RIGHT_BUTTON)){
+      if(dx[0][0]>0){
+        incHist(hist[0],&ih[0][0]);
+      }else if(dx[0][0]==0){
+        addHist(hist[0],&ih[0][0],+1,0);
+        dx[0][0]=+1;
+        dy[0][0]= 0;
+      }
+    }
+    if(arduboy.pressed(   UP_BUTTON)){
+      if(dy[0][0]<0){
+        incHist(hist[0],&ih[0][0]);
+      }else if(dy[0][0]==0){
+        addHist(hist[0],&ih[0][0],-1,1);
+        dx[0][0]= 0;
+        dy[0][0]=-1;
+      }
+    }
+    if(arduboy.pressed( DOWN_BUTTON)){
+      if(dy[0][0]>0){
+        incHist(hist[0],&ih[0][0]);
+      }else if(dy[0][0]==0){
+        addHist(hist[0],&ih[0][0],+1,1);
+        dx[0][0]= 0;
+        dy[0][0]=+1;
+      }
+    }
   }
   
   //judge P1
-  if(x[0][0]==ax && x[0][0]==ay){
+  if(x[0][0]+dx[0][0]==ax && y[0][0]+dy[0][0]==ay){
     gotApple = 0;
   }else if(isWall(x[0][0]+dx[0][0], y[0][0]+dy[0][0])){
     gameover(0);
@@ -108,11 +138,15 @@ void loop(){
     if(dx[1][0]==0){
       if     (!isWall(x[1][0]+ d, y[1][0])){addHist(hist[1],&ih[1][0],d,0); x[1][0]= d; y[1][0]= 0;}
       else if(!isWall(x[1][0]+md, y[1][0])){addHist(hist[1],&ih[1][0],d,0); x[1][0]=md; y[1][0]= 0;}
-      else{gameover(1);}
+      else{
+      //  gameover(1);
+      }
     }else{ //dy[1][0]==0
       if     (!isWall(x[1][0], y[1][0]+ d)){addHist(hist[1],&ih[1][0],d,1); x[1][0]= 0; y[1][0]= d;}
       else if(!isWall(x[1][0], y[1][0]+md)){addHist(hist[1],&ih[1][0],d,1); x[1][0]= 0; y[1][0]=md;}
-      else{gameover(1);}
+      else{
+      //  gameover(1);
+      }
     }
   }
   
@@ -126,37 +160,58 @@ void loop(){
     vram[iy*WIDTH + x[p][0]*2+dx[p][0]*2] |= 1<<by;
     
     //draw tail
+    /*
     iy = (y[p][0]*2+dy[p][0]*1) / 8;
     by = (y[p][0]*2+dy[p][0]*1) % 8;
     vram[iy*WIDTH + x[p][0]*2+dx[p][0]*1] &= ~(1<<by);
     iy = (y[p][0]*2+dy[p][0]*2) / 8;
     by = (y[p][0]*2+dy[p][0]*2) % 8;
     vram[iy*WIDTH + x[p][0]*2+dx[p][0]*2] &= ~(1<<by);
-
-    //move head
+*/
+//  for(int p=0;p<2;p++){
+  }
+  for(int p=0;p<1;p++){
+  //move head
     x[p][0] += dx[p][0];
+    y[p][0] += dy[p][0];
     
     if(p==gotApple){
+      /*
       ax=random(0,WX);
       ay=random(0,WY);
+      while(!isWall(ax,ay)){
+        ax=random(0,WX);
+        ay=random(0,WY);
+      }
+      */
     }else{
       //move tail
       x[p][1] += dx[p][1];
+      y[p][1] += dy[p][1];
       // new direction of tail
       if(getLeft(hist[p],&ih[p][1])==0) ih[p][1] = (ih[p][1]+1) % HISTMAX;
     }
   }
+  
   //display apple
   iy = (ay*2) / 8;
   by = (ay*2) % 8;
-  vram[iy*WIDTH + ax*2] |= 1<<by;
+//  vram[iy*WIDTH + ax*2] |= 1<<by;  
+  int i=0;
+  for(i=0;i<8;i++) vram[i]=1<<i;
+  vram[i++]=(uint8_t)x[0][0];
+  vram[i++]=(uint8_t)y[0][0];
+  vram[i++]=(uint8_t)dx[0][0];
+  vram[i++]=(uint8_t)dy[0][0];
+  vram[i++]=(uint8_t)x[1][0];
+  vram[i++]=(uint8_t)y[1][0];
+  vram[i++]=(uint8_t)dx[1][0];
+  vram[i++]=(uint8_t)dy[1][0];
 
   arduboy.display();
 }
-uint8_t isWall(int x, int y){
-  int iy = (y*2)>>8;
-  int by = 1<<((y*2) & 7);
-  return vram[(iy*WIDTH) + x] & by;
+uint8_t isWall(int _x, int _y){
+  return arduboy.getPixel(_x*2,_y*2);
 }
 
 void addHist(uint8_t *hist, int *i, int d, uint8_t isy){
