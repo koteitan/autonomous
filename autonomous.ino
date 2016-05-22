@@ -1,8 +1,25 @@
 #include <Arduboy.h>
 #define WX 64
 #define WY 32
-Arduboy arduboy;
 unsigned char *vram; // =arduboy.getBuffer()
+
+#define KEY_XM 0
+#define KEY_XP 1
+#define KEY_YM 2
+#define KEY_YP 3
+#define KEY_B  4
+#define KEY_A  5
+#define KEYS   6
+int curkeys = 0;
+int button[KEYS]={ LEFT_BUTTON, RIGHT_BUTTON, UP_BUTTON, DOWN_BUTTON, B_BUTTON, A_BUTTON};
+boolean keypressed[KEYS];
+Arduboy arduboy;
+
+int key_rate    = 60; // keys/sec
+int frame_rate  = 2;  // frames/sec
+int keys_per_frame = key_rate/frame_rate; // keys/frames
+
+int ri=0;
 /* 
   histP[i] = XXXX XXXD
   P       = player        : 0=own 1=enemy
@@ -29,7 +46,7 @@ void setup(){
   arduboy.initRandomSeed();
   vram = arduboy.getBuffer();
   initGame();
-  arduboy.setFrameRate(4);
+  arduboy.setFrameRate(key_rate);
 }
 void initGame(){
   resetGame();
@@ -61,24 +78,32 @@ void resetGame(){
   ih[1][1]=0;
   
   arduboy.clear();
-  arduboy.drawRect(0, 0, WIDTH-2, HEIGHT-2, 1);
+  arduboy.drawRect(0, 0, WIDTH, HEIGHT, 1);
   arduboy.display();
 }
 
-int ri=0;
+
 void loop(){
+  if (!(arduboy.nextFrame())) return;
+  for(int k=0;k<KEYS;k++){
+    keypressed[k] |= arduboy.pressed(button[k]); // add key
+  }
+  if(curkeys++ == keys_per_frame){
+    loopGame();
+    curkeys = 0;
+  }
+  for(int k=0;k<KEYS;k++) keypressed[k]=0;
+}
+
+void loopGame(){
   uint8_t iy=0, by=0;
   int gotApple = 2; // 2 = nobody, 0=P1, 1=P2
-  if (!(arduboy.nextFrame())) return;
   
   //input for P1 (key -> dx,dy)
-  if(!(arduboy.pressed(  LEFT_BUTTON)||
-       arduboy.pressed( RIGHT_BUTTON)||
-       arduboy.pressed(    UP_BUTTON)||
-       arduboy.pressed(  DOWN_BUTTON))){
+  if(!(keypressed[KEY_XM]||keypressed[KEY_XP]||keypressed[KEY_YM]||keypressed[KEY_YP])){
     incHist(hist[0],&ih[0][0]);
   }else{
-    if(arduboy.pressed( LEFT_BUTTON)){
+    if(keypressed[KEY_XM]){
       if(dx[0][0]<0){
         incHist(hist[0],&ih[0][0]);
       }else if(dx[0][0]==0){
@@ -87,7 +112,7 @@ void loop(){
         dy[0][0]= 0;
       }
     }
-    if(arduboy.pressed(RIGHT_BUTTON)){
+    if(keypressed[KEY_XP]){
       if(dx[0][0]>0){
         incHist(hist[0],&ih[0][0]);
       }else if(dx[0][0]==0){
@@ -96,7 +121,7 @@ void loop(){
         dy[0][0]= 0;
       }
     }
-    if(arduboy.pressed(   UP_BUTTON)){
+    if(keypressed[KEY_YM]){
       if(dy[0][0]<0){
         incHist(hist[0],&ih[0][0]);
       }else if(dy[0][0]==0){
@@ -105,7 +130,7 @@ void loop(){
         dy[0][0]=-1;
       }
     }
-    if(arduboy.pressed( DOWN_BUTTON)){
+    if(keypressed[KEY_YP]){
       if(dy[0][0]>0){
         incHist(hist[0],&ih[0][0]);
       }else if(dy[0][0]==0){
@@ -176,14 +201,12 @@ void loop(){
     y[p][0] += dy[p][0];
     
     if(p==gotApple){
-      /*
       ax=random(0,WX);
       ay=random(0,WY);
       while(!isWall(ax,ay)){
         ax=random(0,WX);
         ay=random(0,WY);
       }
-      */
     }else{
       //move tail
       x[p][1] += dx[p][1];
@@ -196,17 +219,15 @@ void loop(){
   //display apple
   iy = (ay*2) / 8;
   by = (ay*2) % 8;
-//  vram[iy*WIDTH + ax*2] |= 1<<by;  
-  int i=0;
-  for(i=0;i<8;i++) vram[i]=1<<i;
-  vram[i++]=(uint8_t)x[0][0];
-  vram[i++]=(uint8_t)y[0][0];
-  vram[i++]=(uint8_t)dx[0][0];
-  vram[i++]=(uint8_t)dy[0][0];
-  vram[i++]=(uint8_t)x[1][0];
-  vram[i++]=(uint8_t)y[1][0];
-  vram[i++]=(uint8_t)dx[1][0];
-  vram[i++]=(uint8_t)dy[1][0];
+  vram[iy*WIDTH + ax*2] |= 1<<by;  
+  if(1){
+    int i=0;
+    for(i=0;i<8;i++) vram[i]=1<<i;
+    vram[i++]=(uint8_t)keypressed[0];
+    vram[i++]=(uint8_t)keypressed[1];
+    vram[i++]=(uint8_t)keypressed[2];
+    vram[i++]=(uint8_t)keypressed[3];
+  }
 
   arduboy.display();
 }
