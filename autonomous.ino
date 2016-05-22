@@ -15,9 +15,7 @@ int button[KEYS]={ LEFT_BUTTON, RIGHT_BUTTON, UP_BUTTON, DOWN_BUTTON, B_BUTTON, 
 boolean keypressed[KEYS];
 Arduboy arduboy;
 
-int key_rate    = 60; // keys/sec
-int frame_rate  = 2;  // frames/sec
-int keys_per_frame = key_rate/frame_rate; // keys/frames
+int frame_rate  = 4;  // frames/sec
 
 int ri=0;
 /* 
@@ -51,48 +49,22 @@ void setup(){
 void initGame(){
   resetGame();
 }
-void resetGame(){
-  ax=random(0,WX);
-  ay=random(0,WY);
 
-  x[0][0]=WX/4*1; y[0][0]=WY/2; //P1 head
-  x[1][0]=WX/4*3; y[1][0]=WY/2; //P1 tail
-  x[0][1]=WX/4*1; y[0][1]=WY/2; //P2 head
-  x[1][1]=WX/4*3; y[1][1]=WY/2; //P2 tail
-  
-  dx[0][0]=+1; dy[0][0]=0; //P1 tail
-  dx[1][0]=-1; dy[1][0]=0; //P1 head
-  dx[0][1]=+1; dy[0][1]=0; //P2 tail
-  dx[1][1]=-1; dy[1][1]=0; //P2 head
-  
-  for(int i=0;i<HISTMAX;i++){
-    hist[0][i]=0x00;
-    hist[1][i]=0x00;
-  }
-  hist[0][0]=0x01; // x+1
-  hist[1][0]=0x7F; // x-1
-  
-  ih[0][0]=0;
-  ih[0][1]=0;
-  ih[1][0]=0;
-  ih[1][1]=0;
-  
-  arduboy.clear();
-  arduboy.drawRect(0, 0, WIDTH, HEIGHT, 1);
-  arduboy.display();
-}
-
+long msnow=0;
+long msdif=0;
+long msmax=0;
 
 void loop(){
+  for(int k=0;k<KEYS;k++) keypressed[k] |= arduboy.pressed(button[k]); // latch key
+  if(keypressed[KEY_A]&&keypressed[KEY_B]) resetGame();
   if (!(arduboy.nextFrame())) return;
-  for(int k=0;k<KEYS;k++){
-    keypressed[k] |= arduboy.pressed(button[k]); // add key
-  }
-  if(curkeys++ == keys_per_frame){
-    loopGame();
-    curkeys = 0;
-  }
-  for(int k=0;k<KEYS;k++) keypressed[k]=0;
+  
+  msnow=millis();
+  loopGame();
+  msdif=millis()-msnow;
+  
+  if(msdif>msmax)msmax=msdif;
+  for(int k=0;k<KEYS;k++) keypressed[k]=0; //clear key
 }
 
 void loopGame(){
@@ -222,11 +194,15 @@ void loopGame(){
   vram[iy*WIDTH + ax*2] |= 1<<by;  
   if(1){
     int i=0;
-    for(i=0;i<8;i++) vram[i]=1<<i;
-    vram[i++]=(uint8_t)keypressed[0];
-    vram[i++]=(uint8_t)keypressed[1];
-    vram[i++]=(uint8_t)keypressed[2];
-    vram[i++]=(uint8_t)keypressed[3];
+    vram[0]=0x55;
+    vram[1]=(uint8_t)msdif;
+    vram[2]=(uint8_t)msmax;
+    vram[0+WIDTH*1]=0x55;
+    vram[1+WIDTH*1]=(uint8_t)(msdif>>8);
+    vram[2+WIDTH*1]=(uint8_t)(msmax>>8);
+    vram[0+WIDTH*2]=0x55;
+    vram[1+WIDTH*2]=(uint8_t)(msdif>>16);
+    vram[2+WIDTH*2]=(uint8_t)(msmax>>16);
   }
 
   arduboy.display();
@@ -257,6 +233,36 @@ void gameover(int iswin){
   resetGame();
 }
 
+void resetGame(){
+  ax=random(0,WX);
+  ay=random(0,WY);
+
+  x[0][0]=WX/4*1; y[0][0]=WY/2; //P1 head
+  x[1][0]=WX/4*3; y[1][0]=WY/2; //P1 tail
+  x[0][1]=WX/4*1; y[0][1]=WY/2; //P2 head
+  x[1][1]=WX/4*3; y[1][1]=WY/2; //P2 tail
+  
+  dx[0][0]=+1; dy[0][0]=0; //P1 tail
+  dx[1][0]=-1; dy[1][0]=0; //P1 head
+  dx[0][1]=+1; dy[0][1]=0; //P2 tail
+  dx[1][1]=-1; dy[1][1]=0; //P2 head
+  
+  for(int i=0;i<HISTMAX;i++){
+    hist[0][i]=0x00;
+    hist[1][i]=0x00;
+  }
+  hist[0][0]=0x01; // x+1
+  hist[1][0]=0x7F; // x-1
+  
+  ih[0][0]=0;
+  ih[0][1]=0;
+  ih[1][0]=0;
+  ih[1][1]=0;
+  
+  arduboy.clear();
+  arduboy.drawRect(0, 0, WIDTH-1, HEIGHT-1, 1);
+  arduboy.display();
+}
 
 
 
