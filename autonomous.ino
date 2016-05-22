@@ -14,6 +14,7 @@ int curkeys = 0;
 int button[KEYS]={ LEFT_BUTTON, RIGHT_BUTTON, UP_BUTTON, DOWN_BUTTON, B_BUTTON, A_BUTTON};
 boolean keypressed[KEYS];
 Arduboy arduboy;
+AbPrinter text(arduboy);
 
 int frame_rate  = 4;  // frames/sec
 
@@ -31,6 +32,8 @@ int  x[2][2],  y[2][2];// {x,y}[p][c] =            current position of player p+
 int dx[2][2], dy[2][2];// {x,y}[p][c] = ={-1,0,+1} current position of player p+1 of {head,tail}[c] 
 int ih[2][2];          // ih[p][c] =         history buffer pointer of player p+1 of {head,tail}[c]
 int ax, ay; // position of apple
+int score[2];
+int bet=0;
 
 uint8_t isWall(int x, int y);
 void addHist(uint8_t *hist, int *i, int d, uint8_t isy);
@@ -40,6 +43,8 @@ int16_t getLeft(uint8_t *hist, int *i);
 void gameover(int iswin);
 
 void setup(){
+  score[0]=0;
+  score[1]=0;
   arduboy.begin();
   arduboy.initRandomSeed();
   vram = arduboy.getBuffer();
@@ -70,6 +75,7 @@ void loop(){
 void loopGame(){
   uint8_t iy=0, by=0;
   int gotApple = 2; // 2 = nobody, 0=P1, 1=P2
+  bet++;
   
   //input for P1 (key -> dx,dy)
   if(!(keypressed[KEY_XM]||keypressed[KEY_XP]||keypressed[KEY_YM]||keypressed[KEY_YP])){
@@ -117,7 +123,7 @@ void loopGame(){
   if(x[0][0]+dx[0][0]==ax && y[0][0]+dy[0][0]==ay){
     gotApple = 0;
   }else if(isWall(x[0][0]+dx[0][0], y[0][0]+dy[0][0])){
-    gameover(0);
+    gameover(1);
   }
   
   //input for P2 (AI -> dx,dy)
@@ -125,12 +131,12 @@ void loopGame(){
     // if got apple
     gotApple = 1;
     incHist(hist[1],&ih[1][0]);
-  }else if(!isWall(x[1][0]+dx[1][0], y[1][0]+dy[1][0])){
+  }else if(!isWall(x[1][0]+dx[1][0], y[1][0]+dy[1][0]) && random(0,100)>1){
     // if p2 can go straight
     incHist(hist[1],&ih[1][0]);
   }else{
     // when p2 can not go straight
-    int d  = random(0,1)*2-1; // randomize the trying order =-1 or +1 
+    int d  = random(0,2)*2-1; // randomize the trying order =-1 or +1 
     int md = -d;
     if(dx[1][0]==0){
       if     (!isWall(x[1][0]+ d, y[1][0])){
@@ -143,7 +149,7 @@ void loopGame(){
         dx[1][0]=md;
         dy[1][0]= 0;}
       else{
-      //  gameover(1);
+        gameover(0);
       }
     }else{ //dy[1][0]==0
       if     (!isWall(x[1][0], y[1][0]+ d)){
@@ -157,7 +163,7 @@ void loopGame(){
         dy[1][0]=md;
       }
       else{
-        gameover(1);
+        gameover(0);
       }
     }
   }
@@ -207,18 +213,44 @@ void loopGame(){
   iy = (ay*2) / 8;
   by = (ay*2) % 8;
   vram[iy*WIDTH + ax*2] |= 1<<by;  
+
+  //display score
+  text.setCursor(0,0);
+  String str="";
+  str+="   "+ralign(score[0],4)+":"+ralign(bet,4)+":"+ralign(score[1],4)+"   ";
+  text.print(str);
+
+  //display debug
   if(1){
     int i=0;
 //    vram[i++]=0x55; vram[i++]=(uint8_t)msdif;
 //    vram[i++]=0x55; vram[i++]=(uint8_t)msmax;
-    vram[i++]=0x55; vram[i++]=dx[1][0];
-    vram[i++]=0x55; vram[i++]=dy[1][0];
+//    vram[i++]=0x55; vram[i++]=random(0,2);
+//    vram[i++]=0x55; vram[i++]=dy[1][0];
 //    vram[i++]=0x55; vram[i++]=x[1][0];
 //    vram[i++]=0x55; vram[i++]=y[1][0];
   }
 
   arduboy.display();
 }
+
+String ralign(int i, int n){
+  int spc=0;
+  if(    0<=+i && +i<=    9) spc=n-1;
+  if(   10<=+i && +i<=   99) spc=n-2;
+  if(  100<=+i && +i<=  999) spc=n-3;
+  if( 1000<=+i && +i<= 9999) spc=n-4;
+  if(10000<=+i             ) spc=n-5;
+  if(    0< -i && -i<=    9) spc=n-2;
+  if(   10<=-i && -i<=   99) spc=n-3;
+  if(  100<=-i && -i<=  999) spc=n-4;
+  if( 1000<=-i && -i<= 9999) spc=n-5;
+  if(10000<=-i             ) spc=n-6;
+  String str="";
+  for(int c=0;c<spc;c++)str+=" ";
+  return str+String(i);
+}
+
 uint8_t isWall(int _x, int _y){
   return arduboy.getPixel(_x*2,_y*2);
 }
@@ -242,6 +274,8 @@ int16_t getLeft(uint8_t *hist, int *i){
 }
 
 void gameover(int iswin){
+  score[iswin]+=bet;
+  bet=0;
   resetGame();
 }
 
@@ -249,10 +283,10 @@ void resetGame(){
   ax=random(0,WX);
   ay=random(0,WY);
 
-  x[0][0]=WX/4*1; y[0][0]=WY/2; //P1 head
-  x[1][0]=WX/4*3; y[1][0]=WY/2; //P1 tail
-  x[0][1]=WX/4*1; y[0][1]=WY/2; //P2 head
-  x[1][1]=WX/4*3; y[1][1]=WY/2; //P2 tail
+  x[0][0]=(WX/4*1)>>1<<1; y[0][0]=(WY/2+10/2)>>1<<1; //P1 head
+  x[1][0]=(WX/4*3)>>1<<1; y[1][0]=(WY/2+10/2)>>1<<1; //P1 tail
+  x[0][1]=(WX/4*1)>>1<<1; y[0][1]=(WY/2+10/2)>>1<<1; //P2 head
+  x[1][1]=(WX/4*3)>>1<<1; y[1][1]=(WY/2+10/2)>>1<<1; //P2 tail
   
   dx[0][0]=+1; dy[0][0]=0; //P1 tail
   dx[1][0]=-1; dy[1][0]=0; //P1 head
@@ -272,7 +306,7 @@ void resetGame(){
   ih[1][1]=0;
   
   arduboy.clear();
-  arduboy.drawRect(0, 0, WIDTH-1, HEIGHT-1, 1);
+  arduboy.drawRect(0, 10, WIDTH-1, HEIGHT-1-10, 1);
   arduboy.display();
 }
 
