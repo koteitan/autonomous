@@ -125,7 +125,7 @@ void loopGame(){
     // if got apple
     gotApple = 1;
     incHist(hist[1],&ih[1][0]);
-  }else if(isWall(x[1][0]+dx[1][0], y[1][0]+dy[1][0])){
+  }else if(!isWall(x[1][0]+dx[1][0], y[1][0]+dy[1][0])){
     // if p2 can go straight
     incHist(hist[1],&ih[1][0]);
   }else{
@@ -133,21 +133,36 @@ void loopGame(){
     int d  = random(0,1)*2-1; // randomize the trying order =-1 or +1 
     int md = -d;
     if(dx[1][0]==0){
-      if     (!isWall(x[1][0]+ d, y[1][0])){addHist(hist[1],&ih[1][0],d,0); x[1][0]= d; y[1][0]= 0;}
-      else if(!isWall(x[1][0]+md, y[1][0])){addHist(hist[1],&ih[1][0],d,0); x[1][0]=md; y[1][0]= 0;}
+      if     (!isWall(x[1][0]+ d, y[1][0])){
+        addHist(hist[1],&ih[1][0],d,0);
+        dx[1][0]= d;
+        dy[1][0]= 0;
+      }
+      else if(!isWall(x[1][0]+md, y[1][0])){
+        addHist(hist[1],&ih[1][0],d,0);
+        dx[1][0]=md;
+        dy[1][0]= 0;}
       else{
       //  gameover(1);
       }
     }else{ //dy[1][0]==0
-      if     (!isWall(x[1][0], y[1][0]+ d)){addHist(hist[1],&ih[1][0],d,1); x[1][0]= 0; y[1][0]= d;}
-      else if(!isWall(x[1][0], y[1][0]+md)){addHist(hist[1],&ih[1][0],d,1); x[1][0]= 0; y[1][0]=md;}
+      if     (!isWall(x[1][0], y[1][0]+ d)){
+        addHist(hist[1],&ih[1][0],d,1);
+        dx[1][0]= 0;
+        dy[1][0]= d;
+      }
+      else if(!isWall(x[1][0], y[1][0]+md)){
+        addHist(hist[1],&ih[1][0],d,1);
+        dx[1][0]= 0;
+        dy[1][0]=md;
+      }
       else{
-      //  gameover(1);
+        gameover(1);
       }
     }
   }
   
-  for(int p=0;p<1;p++){
+  for(int p=0;p<2;p++){
     //draw head
     iy = (y[p][0]*2+dy[p][0]*1) / 8;
     by = (y[p][0]*2+dy[p][0]*1) % 8;
@@ -194,15 +209,12 @@ void loopGame(){
   vram[iy*WIDTH + ax*2] |= 1<<by;  
   if(1){
     int i=0;
-    vram[0]=0x55;
-    vram[1]=(uint8_t)msdif;
-    vram[2]=(uint8_t)msmax;
-    vram[0+WIDTH*1]=0x55;
-    vram[1+WIDTH*1]=(uint8_t)(msdif>>8);
-    vram[2+WIDTH*1]=(uint8_t)(msmax>>8);
-    vram[0+WIDTH*2]=0x55;
-    vram[1+WIDTH*2]=(uint8_t)(msdif>>16);
-    vram[2+WIDTH*2]=(uint8_t)(msmax>>16);
+//    vram[i++]=0x55; vram[i++]=(uint8_t)msdif;
+//    vram[i++]=0x55; vram[i++]=(uint8_t)msmax;
+    vram[i++]=0x55; vram[i++]=dx[1][0];
+    vram[i++]=0x55; vram[i++]=dy[1][0];
+//    vram[i++]=0x55; vram[i++]=x[1][0];
+//    vram[i++]=0x55; vram[i++]=y[1][0];
   }
 
   arduboy.display();
